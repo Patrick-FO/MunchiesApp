@@ -37,12 +37,10 @@ fun RestaurantListView(
     val toggledFilterIds by filterViewModel.toggledFilterIds.collectAsState()
     val filtersLoaded by filterViewModel.filtersLoaded.collectAsState()
 
-    // Primary filter loading - do this first thing
     LaunchedEffect(Unit) {
         filterViewModel.loadAllFilters()
     }
 
-    // Apply filters when toggled filters change
     LaunchedEffect(toggledFilterIds) {
         if (toggledFilterIds.isNotEmpty()) {
             restaurantViewModel.applyFilters(toggledFilterIds.toList())
@@ -51,7 +49,6 @@ fun RestaurantListView(
         }
     }
 
-    // Secondary loading when restaurants are available and filters aren't loaded
     LaunchedEffect(restaurants) {
         if (restaurants.isNotEmpty() && !filtersLoaded) {
             filterViewModel.loadFiltersForRestaurants(restaurants)
@@ -103,7 +100,7 @@ fun RestaurantListView(
             ) {
                 items(
                     items = restaurants,
-                    key = { it.id } // Use stable key for better recomposition
+                    key = { it.id }
                 ) { restaurant ->
                     RestaurantCard(restaurant, filterViewModel, restaurantViewModel)
                 }

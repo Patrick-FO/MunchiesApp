@@ -90,7 +90,6 @@ fun RestaurantCard(
                     }
                 }
 
-                // Filter categories row with loading indicator when needed
                 if (!filtersLoaded) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

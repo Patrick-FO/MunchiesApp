@@ -100,7 +100,7 @@ fun FiltersRow(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         AsyncImage(
-                            model = filter.imageUrl, // Note: camelCase property name from domain entity
+                            model = filter.imageUrl,
                             contentDescription = null,
                             modifier = Modifier.size(48.dp)
                         )

@@ -13,19 +13,15 @@ class FilterRepositoryImpl(
 
     override suspend fun getAllFilters(): Result<List<FilterEntity>> = withContext(Dispatchers.IO) {
         try {
-            // Since there's no direct endpoint for getting all filters,
-            // we'll get all restaurants and extract unique filter IDs
             val response = api.getAllRestaurants()
             val filterIds = response.restaurants.flatMap { it.filterIds }.distinct()
 
-            // Get filter details for each ID
             val filters = mutableListOf<FilterEntity>()
             for (filterId in filterIds) {
                 try {
                     val filter = api.getFilter(filterId)
                     filters.add(filter.toDomain())
                 } catch (e: Exception) {
-                    // Skip this filter if there's an error
                     continue
                 }
             }
@@ -38,7 +34,6 @@ class FilterRepositoryImpl(
 
     override suspend fun getFilterById(id: String): Result<FilterEntity> = withContext(Dispatchers.IO) {
         try {
-            // API returns Filter directly
             val filter = api.getFilter(id)
             Result.success(filter.toDomain())
         } catch (e: Exception) {
@@ -55,7 +50,6 @@ class FilterRepositoryImpl(
                     val filter = api.getFilter(filterId)
                     filters.add(filter.toDomain())
                 } catch (e: Exception) {
-                    // Skip this filter if there's an error
                     continue
                 }
             }

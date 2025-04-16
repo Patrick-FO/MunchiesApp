@@ -1,6 +1,5 @@
 package com.example.umainmunchies.domain.usecase.impl
 
-import com.example.umainmunchies.data.state.AppState
 import com.example.umainmunchies.domain.model.OpenStatusEntity
 import com.example.umainmunchies.domain.model.RestaurantEntity
 import com.example.umainmunchies.domain.repository.RestaurantRepository
@@ -9,8 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class RestaurantUseCaseImpl(
-    private val restaurantRepository: RestaurantRepository,
-    private val appState: AppState
+    private val restaurantRepository: RestaurantRepository
 ) : RestaurantUseCase {
 
     override suspend fun getAllRestaurants(): Result<List<RestaurantEntity>> {

@@ -25,19 +25,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Initialize dependencies
         val apiService = RetrofitClient.restaurantApiService
         val appState = AppState()
 
-        // Create repositories
         val restaurantRepository = RestaurantRepositoryImpl(apiService)
         val filterRepository = FilterRepositoryImpl(apiService)
 
-        // Create use cases
-        val restaurantUseCase = RestaurantUseCaseImpl(restaurantRepository, appState)
+        val restaurantUseCase = RestaurantUseCaseImpl(restaurantRepository)
         val filterUseCase = FilterUseCaseImpl(filterRepository, appState)
 
-        // Create ViewModels
         val factory = ViewModelFactory(restaurantUseCase, filterUseCase, appState)
         restaurantViewModel = ViewModelProvider(this, factory)[RestaurantViewModel::class.java]
         filterViewModel = ViewModelProvider(this, factory)[FilterViewModel::class.java]
