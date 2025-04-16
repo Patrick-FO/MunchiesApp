@@ -15,9 +15,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,16 +32,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.example.umainmunchies.R
-import com.example.umainmunchies.api.Restaurant
+import com.example.umainmunchies.domain.model.RestaurantEntity
 import com.example.umainmunchies.viewmodels.FilterViewModel
 import com.example.umainmunchies.viewmodels.RestaurantViewModel
 
 @Composable
 fun RestaurantCard(
-    restaurantObject: Restaurant,
+    restaurant: RestaurantEntity,
     filterViewModel: FilterViewModel,
     restaurantViewModel: RestaurantViewModel
 ) {
+    val filtersLoaded by filterViewModel.filtersLoaded.collectAsState()
+
     Card(elevation = CardDefaults.cardElevation(
         defaultElevation = 4.dp,
         pressedElevation = 2.dp
@@ -47,12 +52,12 @@ fun RestaurantCard(
             containerColor = Color.White
         ),
         modifier = Modifier.clickable {
-            restaurantViewModel.setSelectedRestaurant(restaurantObject)
+            restaurantViewModel.setSelectedRestaurant(restaurant)
         }
     ) {
-        Column() {
+        Column {
             AsyncImage(
-                model = restaurantObject.image_url,
+                model = restaurant.imageUrl,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -66,7 +71,7 @@ fun RestaurantCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(text = restaurantObject.name, fontSize = 20.sp)
+                    Text(text = restaurant.name, fontSize = 20.sp)
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -77,21 +82,44 @@ fun RestaurantCard(
                         )
                         Spacer(modifier = Modifier.width(3.dp))
                         Text(
-                            text = restaurantObject.rating.toString(),
+                            text = restaurant.rating.toString(),
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 10.sp,
                             color = colorResource(R.color.rating_color)
                         )
                     }
                 }
-                Row() {
-                    Text(
-                        text = filterViewModel.mapFilterIdToString(restaurantObject.filterIds),
-                        color = Color.Gray,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+
+                // Filter categories row with loading indicator when needed
+                if (!filtersLoaded) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(10.dp),
+                            strokeWidth = 1.dp,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Loading categories...",
+                            color = Color.Gray,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                } else {
+                    Row(modifier = Modifier.padding(vertical = 4.dp)) {
+                        Text(
+                            text = filterViewModel.mapFilterIdToString(restaurant.filterIds),
+                            color = Color.Gray,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -103,7 +131,7 @@ fun RestaurantCard(
                     )
                     Spacer(modifier = Modifier.width(2.dp))
                     Text(
-                        text = restaurantViewModel.formatTime(restaurantObject.delivery_time_minutes.toFloat()),
+                        text = restaurantViewModel.formatDeliveryTime(restaurant.deliveryTimeMinutes.toFloat()),
                         fontSize = 11.sp
                     )
                 }

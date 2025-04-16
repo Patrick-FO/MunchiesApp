@@ -40,6 +40,7 @@ android {
 }
 
 dependencies {
+    implementation("io.insert-koin:koin-androidx-compose:3.4.0")
     implementation("androidx.compose.ui:ui-text-google-fonts:1.5.4")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
     implementation("androidx.compose.material:material-icons-extended:1.6.0")

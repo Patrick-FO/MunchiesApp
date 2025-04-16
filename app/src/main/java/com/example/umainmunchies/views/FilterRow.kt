@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -44,21 +45,36 @@ val poppinsFontFamily = FontFamily(
 fun FiltersRow(
     viewModel: FilterViewModel
 ) {
-    val filters by viewModel.filterObjectList.collectAsState()
+    val filters by viewModel.filters.collectAsState()
     val toggledFilterIds by viewModel.toggledFilterIds.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
     LazyRow(
         modifier = Modifier.fillMaxWidth(0.95f),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        filters?.let { filterList ->
-            items(filterList) { filter ->
+        if (isLoading && filters.isEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    Text(
+                        text = "Loading filters...",
+                        modifier = Modifier.padding(start = 8.dp),
+                        fontFamily = poppinsFontFamily
+                    )
+                }
+            }
+        } else {
+            items(filters) { filter ->
                 val isToggled = toggledFilterIds.contains(filter.id)
 
                 Button(
                     onClick = {
-                    viewModel.toggleFilter(filter.id)
-                },
+                        viewModel.toggleFilter(filter.id)
+                    },
                     colors = if(isToggled) {
                         ButtonDefaults.buttonColors(
                             containerColor = Color.LightGray,
@@ -84,7 +100,7 @@ fun FiltersRow(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         AsyncImage(
-                            model = filter.image_url,
+                            model = filter.imageUrl, // Note: camelCase property name from domain entity
                             contentDescription = null,
                             modifier = Modifier.size(48.dp)
                         )

@@ -3,145 +3,128 @@ package com.example.umainmunchies.viewmodels
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.umainmunchies.api.Filter
-import com.example.umainmunchies.repositories.RestaurantRepository
-import kotlinx.coroutines.Dispatchers
+import com.example.umainmunchies.data.state.AppState
+import com.example.umainmunchies.domain.model.FilterEntity
+import com.example.umainmunchies.domain.model.RestaurantEntity
+import com.example.umainmunchies.domain.usecase.FilterUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import okhttp3.internal.toImmutableList
-import okhttp3.internal.toImmutableMap
 
 class FilterViewModel(
-    private val restaurantRepository: RestaurantRepository,
-    private val restaurantViewModel: RestaurantViewModel
-): ViewModel() {
+    private val filterUseCase: FilterUseCase,
+    private val appState: AppState
+) : ViewModel() {
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
     val error = _error.asStateFlow()
 
-    private val _filterIdList = MutableStateFlow<List<String>?>(null)
-    val filterIdList = _filterIdList.asStateFlow()
+    private val _filters = MutableStateFlow<List<FilterEntity>>(emptyList())
+    val filters = _filters.asStateFlow()
 
-    private var _filterIdMap = MutableStateFlow<Map<String, String>?>(null)
-    val filterIdMap = _filterIdMap.asStateFlow()
+    private val _filterIdToNameMap = MutableStateFlow<Map<String, String>>(emptyMap())
+    val filterIdToNameMap = _filterIdToNameMap.asStateFlow()
 
-    private val _filterObjectList = MutableStateFlow<MutableList<Filter>?>(mutableListOf())
-    val filterObjectList = _filterObjectList.asStateFlow()
-
-    private val _toggledFilterIds = MutableStateFlow<Set<String>>(setOf())
+    private val _toggledFilterIds = MutableStateFlow<Set<String>>(emptySet())
     val toggledFilterIds = _toggledFilterIds.asStateFlow()
 
-    private val _isListFiltered = MutableStateFlow<Boolean>(false)
+    private val _isListFiltered = MutableStateFlow(false)
     val isListFiltered = _isListFiltered.asStateFlow()
 
+    private val _filtersLoaded = MutableStateFlow(false)
+    val filtersLoaded = _filtersLoaded.asStateFlow()
+
     init {
-        Log.d("Filter view model", "ViewModel initialized")
-        viewModelScope.launch(Dispatchers.IO) {
-            restaurantViewModel.restaurants.collect { restaurants ->
-                if (restaurants.isNotEmpty()) {
-                    collectFilterIds()
-                }
-            }
-        }
-    }
+        Log.d("FilterViewModel", "ViewModel initialized")
 
-    private fun collectFilterIds() {
-        val currentList = mutableListOf<String>()
-
-        for(restaurant in restaurantViewModel.restaurants.value) {
-            for(filterId in restaurant.filterIds) {
-                if(!currentList.contains(filterId)) {
-                    currentList.add(filterId)
-                }
+        viewModelScope.launch {
+            filterUseCase.getActiveFilters().collectLatest { activeFilters ->
+                _toggledFilterIds.value = activeFilters
+                _isListFiltered.value = activeFilters.isNotEmpty()
             }
         }
 
-        Log.d("FilterViewModel", "Collected ${currentList.size} filter IDs: $currentList")
-        _filterIdList.value = currentList.toImmutableList()
-        loadFilterDetails(currentList)
-        mapValuesAndFilterIds(currentList)
+        loadAllFilters()
     }
 
-    fun mapValuesAndFilterIds(filterList: List<String>) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val newMap = mutableMapOf<String, String>()
-
-            for (filterId in filterList) {
-                restaurantRepository.getFilter(filterId)
-                    .onSuccess { filter ->
-                        newMap[filterId] = filter.name
-                        Log.d("Filter IDs and names map", "Map: $newMap")
-                    }
-                    .onFailure {
-                        _error.value = "Error fetching filter: ${it.message}"
-                        Log.e("Filter IDs and names map", "Error fetching map")
-                    }
+    fun loadAllFilters() {
+        viewModelScope.launch {
+            if(_filters.value.isNotEmpty()) {
+                _filtersLoaded.value = true
+                return@launch
             }
-            _filterIdMap.value = newMap.toImmutableMap()
-        }
-    }
 
-    fun loadFilterDetails(localFilterIdList: List<String>) {
-        viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
+            _error.value = null
 
-            val newFilterList = mutableListOf<Filter>()
+            filterUseCase.getAllFilters()
+                .onSuccess { filtersList ->
+                    _filters.value = filtersList
+                    _filterIdToNameMap.value = filtersList.associate { it.id to it.name }
+                    _filtersLoaded.value = true
+                    Log.d("FilterViewModel", "Loaded ${filtersList.size} filters")
+                }
+                .onFailure { error ->
+                    _error.value = "Failed to load filters: ${error.message}"
+                    Log.e("FilterViewModel", "Error loading filters: ${error.message}")
+                }
 
-            for(filterId in localFilterIdList){
-                restaurantRepository.getFilter(filterId)
-                    .onSuccess { filter ->
-                        newFilterList.add(filter)
-                        Log.d("Filter object", "Filter object: $newFilterList")
-                    }
-                    .onFailure {
-                        _error.value = "Error fetching filter details: ${it.message}"
-                        Log.e("Filter object", "Error fetching filter details: $newFilterList")
-                    }
-            }
-            _filterObjectList.value = newFilterList
             _isLoading.value = false
         }
     }
 
-    fun mapFilterIdToString(currentFilterIdList: List<String>): String {
-        val idMap = filterIdMap.value
-        if(idMap == null || idMap.isEmpty()) {
+    fun loadFiltersForRestaurants(restaurants: List<RestaurantEntity>) {
+        if (restaurants.isEmpty()) return
+
+        if(_filtersLoaded.value && _filters.value.isNotEmpty()) {
+            return
+        }
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
+            filterUseCase.getFiltersForRestaurants(restaurants)
+                .onSuccess { filtersList ->
+                    _filters.value = filtersList
+                    _filterIdToNameMap.value = filtersList.associate { it.id to it.name }
+                    _filtersLoaded.value = true
+                    Log.d("FilterViewModel", "Loaded ${filtersList.size} filters")
+                }
+                .onFailure { error ->
+                    _error.value = "Failed to load filters: ${error.message}"
+                    Log.e("FilterViewModel", "Error loading filters: ${error.message}")
+                }
+
+            _isLoading.value = false
+        }
+    }
+
+    fun mapFilterIdToString(filterIds: List<String>): String {
+        val currentMap = _filterIdToNameMap.value
+
+        if (currentMap.isEmpty()) {
             return "Loading categories..."
         }
 
-        val currentList = mutableListOf<String>()
-        for(i in currentFilterIdList) {
-            idMap[i]?.let { name ->
-                currentList.add(name)
-            } ?: currentList.add("Unknown")
+        val availableFilters = filterIds.mapNotNull { filterId ->
+            currentMap[filterId]
         }
-        return currentList.joinToString(" • ")
+
+        return if (availableFilters.isEmpty()) {
+            "Loading categories..."
+        } else {
+            availableFilters.joinToString(" • ")
+        }
     }
 
     fun toggleFilter(filterId: String) {
-        val currentToggledSet = _toggledFilterIds.value.toMutableSet()
-        if(currentToggledSet.contains(filterId)) {
-            currentToggledSet.remove(filterId)
-        } else {
-            currentToggledSet.add(filterId)
-        }
-        _toggledFilterIds.value = currentToggledSet
-
-        _isListFiltered.value = _toggledFilterIds.value.isNotEmpty()
-
-        applyFilters()
-    }
-
-    private fun applyFilters() {
-        val activeFilters = _toggledFilterIds.value
-
-        if(activeFilters.isEmpty()) {
-            restaurantViewModel.loadAllRestaurants()
-        } else {
-            restaurantViewModel.applyFilters(activeFilters.toList())
+        viewModelScope.launch {
+            filterUseCase.toggleFilter(filterId)
         }
     }
 
